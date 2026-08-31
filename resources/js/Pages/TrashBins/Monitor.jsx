@@ -2,10 +2,8 @@ import AppLayout from '@/Layouts/AppLayout';
 import StatusBadge from '@/Components/StatusBadge';
 import EmptyState from '@/Components/EmptyState';
 import TrackingMap from '@/Components/TrackingMap';
-import { usePage, useForm, router, Link } from '@inertiajs/react';
+import { usePage, router, Link } from '@inertiajs/react';
 import { useState, useMemo, useEffect } from 'react';
-import { Dialog, Transition } from '@headlessui/react';
-import Swal from 'sweetalert2';
 
 const statusCardStyles = {
     kosong: 'bg-green-50 border-green-300',
@@ -55,48 +53,52 @@ const formatDistance = (distanceKm) => {
 export default function Monitor({ units: initialUnits }) {
     const { props: pageProps } = usePage();
     const userRole = pageProps.auth.user?.role;
-    const isSiswa = userRole === 'siswa';
     const isPetugas = userRole === 'petugas';
     const isAdmin = userRole === 'super_admin' || userRole === 'admin_unit';
+    // Super admin memakai alur peta sama seperti petugas (GPS + rute prioritas).
+    const isSuperAdmin = userRole === 'super_admin';
+    const usesGps = isPetugas || isSuperAdmin;
 
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
     const [unitFilter, setUnitFilter] = useState('');
-    const [complaintModalOpen, setComplaintModalOpen] = useState(false);
-    const [selectedBin, setSelectedBin] = useState(null);
     const [selectedMapBinId, setSelectedMapBinId] = useState(null);
     const [userLocation, setUserLocation] = useState(null);
-    const [locationStatus, setLocationStatus] = useState('Mendeteksi lokasi petugas...');
-
-    const complaintForm = useForm({
-        trash_bin_id: '',
-        judul: '',
-        deskripsi: '',
-        foto: null,
-    });
+    const [locationStatus, setLocationStatus] = useState('Mendeteksi lokasi...');
 
     useEffect(() => {
-        if (!isPetugas) return;
+        if (!usesGps) return;
 
         if (!navigator.geolocation) {
             setLocationStatus('Browser tidak mendukung deteksi lokasi.');
             return;
         }
 
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                setUserLocation({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                });
-                setLocationStatus('Lokasi aktif. Tong diurutkan dari jarak terdekat per unit.');
-            },
-            () => {
-                setLocationStatus('Izin lokasi ditolak atau lokasi tidak tersedia.');
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+        const updateLocation = (position) => {
+            setUserLocation({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: position.coords.accuracy ?? null,
+                heading: position.coords.heading ?? null,
+            });
+            setLocationStatus('Lokasi aktif. Tong diurutkan dari jarak terdekat per unit.');
+        };
+
+        const handleLocationError = () => {
+            setLocationStatus('Izin lokasi ditolak atau lokasi tidak tersedia.');
+        };
+
+        // watchPosition agar ikon petugas ikut bergerak real-time saat petugas berjalan.
+        const watchId = navigator.geolocation.watchPosition(
+            updateLocation,
+            handleLocationError,
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 },
         );
-    }, [isPetugas]);
+
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+        };
+    }, [usesGps]);
 
     const units = useMemo(() => {
         if (!initialUnits) return [];
@@ -141,33 +143,6 @@ export default function Monitor({ units: initialUnits }) {
         ),
         [units],
     );
-
-    const openComplaintForm = (bin) => {
-        setSelectedBin(bin);
-        complaintForm.setData({
-            trash_bin_id: bin.id,
-            judul: '',
-            deskripsi: '',
-            foto: null,
-        });
-        setComplaintModalOpen(true);
-    };
-
-    const submitComplaint = (e) => {
-        e.preventDefault();
-        complaintForm.post(route('siswa.aduan.store'), {
-            onSuccess: () => {
-                setComplaintModalOpen(false);
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Aduan Terkirim!',
-                    text: 'Aduan Anda telah berhasil dikirim dan akan segera diproses.',
-                    timer: 3000,
-                    showConfirmButton: false,
-                });
-            },
-        });
-    };
 
     const handleAngkut = (bin) => {
         router.get(route('petugas.pengangkutan.index'), { trash_bin_id: bin.id });
@@ -234,7 +209,7 @@ export default function Monitor({ units: initialUnits }) {
                 </div>
 
                 {/* Unit Groups */}
-                {isPetugas && (
+                {usesGps && (
                     <div className="rounded-xl bg-white border border-[#e5e7eb] px-4 py-3 text-xs text-[#6b7280]">
                         {locationStatus}
                     </div>
@@ -245,10 +220,14 @@ export default function Monitor({ units: initialUnits }) {
                     userLocation={userLocation}
                     selectedBinId={selectedMapBinId}
                     onSelectBin={(bin) => setSelectedMapBinId(bin.id)}
+                    priorityRoute={isSuperAdmin}
+                    showLabels
                     title={isPetugas ? 'Peta Tracking Petugas' : 'Peta Monitoring Tong'}
                     subtitle={isPetugas
                         ? 'Lihat posisi petugas, titik tong terdekat, dan prioritas angkut.'
-                        : 'Lihat sebaran titik tong berdasarkan filter yang aktif.'}
+                        : isSuperAdmin
+                            ? 'Garis rute menghubungkan tong prioritas: penuh & setengah penuh (kosong tampil tanpa rute).'
+                            : 'Lihat sebaran titik tong berdasarkan filter yang aktif.'}
                 />
 
                 {units.length > 0 ? (
@@ -321,17 +300,6 @@ export default function Monitor({ units: initialUnits }) {
                                                             Angkut
                                                         </button>
                                                     )}
-                                                    {isSiswa && isPenuh && (
-                                                        <button
-                                                            onClick={() => openComplaintForm(bin)}
-                                                            className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 transition"
-                                                        >
-                                                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                                                            </svg>
-                                                            Adukan
-                                                        </button>
-                                                    )}
                                                     {isAdmin && (
                                                         <button
                                                             onClick={() => handleEdit(bin)}
@@ -362,115 +330,6 @@ export default function Monitor({ units: initialUnits }) {
                         description="Coba ubah filter atau kata kunci pencarian"
                     />
                 )}
-
-                {/* Complaint Modal for Siswa */}
-                <Transition show={complaintModalOpen} as="div">
-                    <Dialog onClose={() => setComplaintModalOpen(false)} className="relative z-[2000]">
-                        <Transition.Child
-                            enter="ease-out duration-300"
-                            enterFrom="opacity-0"
-                            enterTo="opacity-100"
-                            leave="ease-in duration-200"
-                            leaveFrom="opacity-100"
-                            leaveTo="opacity-0"
-                        >
-                            <div className="fixed inset-0 bg-black/40" />
-                        </Transition.Child>
-
-                        <div className="fixed inset-0 flex items-center justify-center p-4">
-                            <Transition.Child
-                                enter="ease-out duration-300"
-                                enterFrom="opacity-0 scale-95"
-                                enterTo="opacity-100 scale-100"
-                                leave="ease-in duration-200"
-                                leaveFrom="opacity-100 scale-100"
-                                leaveTo="opacity-0 scale-95"
-                            >
-                                <Dialog.Panel className="w-full max-w-md bg-white rounded-2xl shadow-xl">
-                                    <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-                                        <Dialog.Title className="text-lg font-semibold text-gray-900">
-                                            Laporkan Tong Penuh
-                                        </Dialog.Title>
-                                        <button onClick={() => setComplaintModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </div>
-
-                                    <form onSubmit={submitComplaint} className="px-6 py-5 space-y-4">
-                                        {selectedBin && (
-                                            <div className="rounded-xl bg-gray-50 p-3 text-sm">
-                                                <p className="font-medium text-gray-900">{selectedBin.kode} — {selectedBin.nama}</p>
-                                                <p className="text-xs text-gray-500 mt-0.5">{selectedBin.lokasi}</p>
-                                            </div>
-                                        )}
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Judul Aduan</label>
-                                            <input
-                                                type="text"
-                                                value={complaintForm.data.judul}
-                                                onChange={(e) => complaintForm.setData('judul', e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-green-500 focus:ring-green-500"
-                                                placeholder="Contoh: Tong sampah di depan kelas penuh"
-                                                required
-                                            />
-                                            {complaintForm.errors.judul && (
-                                                <p className="text-xs text-red-600 mt-1">{complaintForm.errors.judul}</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi</label>
-                                            <textarea
-                                                rows="3"
-                                                value={complaintForm.data.deskripsi}
-                                                onChange={(e) => complaintForm.setData('deskripsi', e.target.value)}
-                                                className="w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-green-500 focus:ring-green-500"
-                                                placeholder="Jelaskan kondisi tong sampah..."
-                                                required
-                                            />
-                                            {complaintForm.errors.deskripsi && (
-                                                <p className="text-xs text-red-600 mt-1">{complaintForm.errors.deskripsi}</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Foto (Opsional)</label>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                onChange={(e) => complaintForm.setData('foto', e.target.files[0])}
-                                                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
-                                            />
-                                            {complaintForm.errors.foto && (
-                                                <p className="text-xs text-red-600 mt-1">{complaintForm.errors.foto}</p>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-3 pt-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => setComplaintModalOpen(false)}
-                                                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
-                                            >
-                                                Batal
-                                            </button>
-                                            <button
-                                                type="submit"
-                                                disabled={complaintForm.processing}
-                                                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 transition disabled:opacity-50"
-                                            >
-                                                {complaintForm.processing ? 'Mengirim...' : 'Kirim Aduan'}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </Dialog.Panel>
-                            </Transition.Child>
-                        </div>
-                    </Dialog>
-                </Transition>
             </div>
         </AppLayout>
     );

@@ -221,7 +221,7 @@ export default function Petugas({
                                                 </td>
                                                 <td className="py-3">
                                                     <Link
-                                                        href={route('petugas.pengangkutan.index')}
+                                                        href={route('petugas.pengangkutan.index', { trash_bin_id: item.id })}
                                                         className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 transition"
                                                     >
                                                         <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -256,7 +256,7 @@ export default function Petugas({
                                                 </div>
                                             </div>
                                             <Link
-                                                href={route('petugas.pengangkutan.index')}
+                                                href={route('petugas.pengangkutan.index', { trash_bin_id: item.id })}
                                                 className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 transition shrink-0"
                                             >
                                                 Angkut

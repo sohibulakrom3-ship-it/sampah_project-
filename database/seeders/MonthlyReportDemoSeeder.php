@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Complaint;
+use App\Models\PublicReport;
 use App\Models\Report;
 use App\Models\TrashBin;
 use App\Models\TrashHistory;
@@ -22,7 +22,7 @@ class MonthlyReportDemoSeeder extends Seeder
             ->where('catatan', 'like', self::MARKER . '%')
             ->delete();
 
-        Complaint::whereBetween('created_at', [$start, $end])
+        PublicReport::whereBetween('created_at', [$start, $end])
             ->where('deskripsi', 'like', self::MARKER . '%')
             ->delete();
 
@@ -33,7 +33,6 @@ class MonthlyReportDemoSeeder extends Seeder
         $bins = TrashBin::with('unit')->orderBy('unit_id')->orderBy('id')->get();
         $superAdmin = User::whereHas('role', fn ($role) => $role->where('name', 'super_admin'))->first();
         $petugas = User::whereHas('role', fn ($role) => $role->where('name', 'petugas'))->get();
-        $students = User::whereHas('role', fn ($role) => $role->where('name', 'siswa'))->get();
 
         if ($bins->isEmpty() || ! $superAdmin || $petugas->isEmpty()) {
             return;
@@ -72,14 +71,14 @@ class MonthlyReportDemoSeeder extends Seeder
                 $complaintTotal = (($dayIndex + $unitIndex) % 2) + 1;
                 for ($i = 0; $i < $complaintTotal; $i++) {
                     $bin = $unitBins[($dayIndex + $i) % $unitBins->count()];
-                    $student = $students->firstWhere('unit_id', $bin->unit_id) ?? $students->first() ?? $superAdmin;
 
-                    Complaint::create([
-                        'user_id' => $student->id,
+                    PublicReport::create([
+                        'nomor_tiket' => PublicReport::generateNomorTiket(),
                         'trash_bin_id' => $bin->id,
-                        'judul' => 'Aduan tong area ' . ($bin->unit?->nama ?? 'kampus'),
+                        'jenis_masalah' => ['penuh', 'rusak', 'bau', 'hama', 'pemilahan', 'lainnya'][($dayIndex + $unitIndex + $i) % 6],
                         'deskripsi' => self::MARKER . ' Tong perlu dipantau pada periode bulan berjalan.',
                         'status' => $statuses[($dayIndex + $unitIndex + $i) % count($statuses)],
+                        'ip_address' => '10.0.0.' . ((($dayIndex + $unitIndex + $i) % 250) + 1),
                         'created_at' => $date->copy()->setTime(9 + $i, 20),
                         'updated_at' => $date->copy()->setTime(10 + $i, 5),
                     ]);

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Report, Activity, TrashHistory, Complaint};
+use App\Models\{PublicReport, Report, Activity, TrashHistory};
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -45,18 +45,12 @@ class ReportController extends Controller
         $monthEnd = now()->endOfDay();
 
         $monthHistoryScope = TrashHistory::whereBetween('tanggal', [$monthStart, $monthEnd]);
-        $monthComplaintScope = Complaint::whereBetween('created_at', [$monthStart, $monthEnd]);
+        $monthComplaintScope = PublicReport::whereBetween('created_at', [$monthStart, $monthEnd]);
         $monthReportScope = Report::whereBetween('periode_selesai', [$monthStart, $monthEnd]);
 
         if ($selectedUnitId) {
             $monthHistoryScope->whereHas('trashBin', fn ($trashBin) => $trashBin->where('unit_id', $selectedUnitId));
-            $monthComplaintScope->where(function ($complaint) use ($selectedUnitId) {
-                $complaint->whereHas('trashBin', fn ($trashBin) => $trashBin->where('unit_id', $selectedUnitId))
-                    ->orWhere(function ($fallback) use ($selectedUnitId) {
-                        $fallback->whereNull('trash_bin_id')
-                            ->whereHas('user', fn ($reporter) => $reporter->where('unit_id', $selectedUnitId));
-                    });
-            });
+            $monthComplaintScope->whereHas('trashBin', fn ($trashBin) => $trashBin->where('unit_id', $selectedUnitId));
             $monthReportScope->where('unit_id', $selectedUnitId);
         }
 
@@ -319,17 +313,11 @@ class ReportController extends Controller
         $periodeSelesai = Carbon::parse($validated['periode_selesai'])->endOfDay();
 
         $historyScope = TrashHistory::whereBetween('tanggal', [$periodeMulai, $periodeSelesai]);
-        $complaintScope = Complaint::whereBetween('created_at', [$periodeMulai, $periodeSelesai]);
+        $complaintScope = PublicReport::whereBetween('created_at', [$periodeMulai, $periodeSelesai]);
 
         if (! empty($validated['unit_id'])) {
             $historyScope->whereHas('trashBin', fn ($q) => $q->where('unit_id', $validated['unit_id']));
-            $complaintScope->where(function ($query) use ($validated) {
-                $query->whereHas('trashBin', fn ($trashBin) => $trashBin->where('unit_id', $validated['unit_id']))
-                    ->orWhere(function ($fallback) use ($validated) {
-                        $fallback->whereNull('trash_bin_id')
-                            ->whereHas('user', fn ($reporter) => $reporter->where('unit_id', $validated['unit_id']));
-                    });
-            });
+            $complaintScope->whereHas('trashBin', fn ($trashBin) => $trashBin->where('unit_id', $validated['unit_id']));
         }
 
         return [

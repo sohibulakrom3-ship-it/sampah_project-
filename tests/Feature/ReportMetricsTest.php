@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Complaint;
+use App\Models\PublicReport;
 use App\Models\Report;
 use App\Models\Role;
 use App\Models\TrashBin;
@@ -24,40 +24,14 @@ class ReportMetricsTest extends TestCase
         $otherUnit = $this->makeUnit('SMP Kampus Laporan');
         $trashBin = $this->makeTrashBin($unit, 'RPT-001');
         $otherTrashBin = $this->makeTrashBin($otherUnit, 'RPT-999');
-        $student = $this->makeUser('siswa', $unit);
-        $otherStudent = $this->makeUser('siswa', $otherUnit);
 
         $this->makeHistory($trashBin, $admin, '2026-06-20 23:30:00');
         $this->makeHistory($trashBin, $admin, '2026-06-21 10:00:00');
         $this->makeHistory($otherTrashBin, $admin, '2026-06-20 12:00:00');
 
-        Complaint::create([
-            'user_id' => $admin->id,
-            'trash_bin_id' => $trashBin->id,
-            'judul' => 'Aduan malam',
-            'deskripsi' => 'Masih masuk tanggal akhir.',
-            'status' => 'menunggu',
-            'created_at' => '2026-06-20 22:00:00',
-            'updated_at' => '2026-06-20 22:00:00',
-        ]);
-        Complaint::create([
-            'user_id' => $student->id,
-            'trash_bin_id' => null,
-            'judul' => 'Aduan umum unit',
-            'deskripsi' => 'Tidak terkait tong tertentu, tetap masuk laporan unit.',
-            'status' => 'menunggu',
-            'created_at' => '2026-06-20 21:00:00',
-            'updated_at' => '2026-06-20 21:00:00',
-        ]);
-        Complaint::create([
-            'user_id' => $otherStudent->id,
-            'trash_bin_id' => null,
-            'judul' => 'Aduan umum unit lain',
-            'deskripsi' => 'Tidak boleh masuk laporan unit ini.',
-            'status' => 'menunggu',
-            'created_at' => '2026-06-20 21:30:00',
-            'updated_at' => '2026-06-20 21:30:00',
-        ]);
+        $this->makePublicReport($trashBin, '2026-06-20 22:00:00', 'Aduan malam — masih masuk tanggal akhir.', '192.168.1.10');
+        $this->makePublicReport($trashBin, '2026-06-20 21:00:00', 'Tetap masuk laporan unit ini.', '192.168.1.11');
+        $this->makePublicReport($otherTrashBin, '2026-06-20 21:30:00', 'Tidak boleh masuk laporan unit ini.', '192.168.1.12');
 
         $this->actingAs($admin)
             ->post(route('admin.reports.store'), [
@@ -207,6 +181,25 @@ class ReportMetricsTest extends TestCase
             'jenis_sampah' => 'organik',
             'status' => 'penuh',
         ]);
+    }
+
+    private function makePublicReport(TrashBin $trashBin, string $createdAt, string $deskripsi, string $ip): PublicReport
+    {
+        // created_at tidak masuk $fillable PublicReport, jadi diset eksplisit
+        // agar periode laporan (whereBetween created_at) menghitungnya.
+        $report = PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
+            'trash_bin_id' => $trashBin->id,
+            'jenis_masalah' => 'penuh',
+            'deskripsi' => $deskripsi,
+            'status' => 'menunggu',
+            'ip_address' => $ip,
+        ]);
+
+        $report->created_at = $createdAt;
+        $report->save();
+
+        return $report;
     }
 
     private function makeHistory(TrashBin $trashBin, User $user, string $tanggal): TrashHistory

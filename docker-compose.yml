@@ -6,14 +6,14 @@ services:
     container_name: sipesa_app
     restart: unless-stopped
     ports:
-      - "8080:80"
-      - "8443:443"
+      - "127.0.0.1:8080:80"
+      - "127.0.0.1:8443:443"
     environment:
       APP_NAME: SiPeSa
       APP_ENV: production
       APP_KEY: ${APP_KEY:-base64:g8y6SkTtn0bRi4qs0R0uZN1I6ckhBtoEesyddDG6DkQ=}
       APP_DEBUG: "false"
-      APP_URL: ${APP_URL:-https://129.226.83.33:8443}
+      APP_URL: ${APP_URL:-https://cherome.my.id}
       APP_TIMEZONE: Asia/Jakarta
       APP_LOCALE: id
       LOG_CHANNEL: stack
@@ -28,6 +28,8 @@ services:
       SESSION_LIFETIME: "120"
       CACHE_STORE: file
       QUEUE_CONNECTION: sync
+    volumes:
+      - uploads_data:/var/www/html/storage/app/public
     depends_on:
       - db
 
@@ -35,8 +37,6 @@ services:
     image: mysql:8.0
     container_name: sipesa_db
     restart: unless-stopped
-    ports:
-      - "3306:3306"
     environment:
       MYSQL_DATABASE: ${DB_DATABASE:-sipesa}
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
@@ -45,3 +45,4 @@ services:
 
 volumes:
   db_data:
+  uploads_data:

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Activity, Complaint, Report, TrashBin, TrashHistory, Unit, User};
+use App\Models\{Activity, PublicReport, Report, TrashBin, TrashHistory, Unit, User};
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -28,7 +28,7 @@ class DashboardController extends Controller
         $totalUnits = Unit::count();
         $totalTrashBins = TrashBin::count();
         $totalUsers = User::count();
-        $totalAduanPending = Complaint::where('status', 'menunggu')->count();
+        $totalAduanPending = PublicReport::where('status', 'menunggu')->count();
         $totalDiangkutHariIni = TrashHistory::whereDate('tanggal', today())->count();
         $totalReports = Report::count();
 
@@ -55,7 +55,7 @@ class DashboardController extends Controller
                     'penuh' => $u->penuh_count,
                 ]),
             'aktivitasTerbaru' => Activity::with('user')->latest()->take(10)->get(),
-            'aduanTerbaru' => Complaint::with('user', 'trashBin')->where('status', 'menunggu')->latest()->take(5)->get(),
+            'aduanTerbaru' => PublicReport::with('trashBin.unit')->latest()->take(5)->get(),
             'tongPenuh' => TrashBin::with('unit')->where('status', 'penuh')->latest()->take(5)->get(),
             'trenPengangkutan' => TrashHistory::selectRaw('DATE(tanggal) as date, COUNT(*) as count')
                 ->whereDate('tanggal', '>=', now()->subDays(30))
@@ -73,8 +73,7 @@ class DashboardController extends Controller
 
     private function adminUnitDashboard(User $user): \Inertia\Response
     {
-        $pendingComplaints = $this->unitComplaintQuery($user->unit_id)
-            ->where('status', 'menunggu');
+        $pendingReports = PublicReport::whereHas('trashBin', fn ($trashBin) => $trashBin->where('unit_id', $user->unit_id));
         $unitReports = Report::where('unit_id', $user->unit_id);
 
         return Inertia::render('Dashboard/AdminUnit', [
@@ -86,7 +85,7 @@ class DashboardController extends Controller
             'totalPenuh' => TrashBin::where('unit_id', $user->unit_id)->where('status', 'penuh')->count(),
             'totalDiangkutHariIni' => TrashHistory::whereHas('trashBin', fn($q) => $q->where('unit_id', $user->unit_id))
                 ->whereDate('tanggal', today())->count(),
-            'totalAduanPending' => (clone $pendingComplaints)->count(),
+            'totalAduanPending' => (clone $pendingReports)->where('status', 'menunggu')->count(),
             'tongPerUnit' => Unit::where('id', $user->unit_id)
                 ->withCount(['trashBins', 'trashBins as penuh_count' => fn($q) => $q->where('status', 'penuh')])
                 ->get()
@@ -99,8 +98,8 @@ class DashboardController extends Controller
                 ]),
             'aktivitasTerbaru' => Activity::whereHas('user', fn($q) => $q->where('unit_id', $user->unit_id))
                 ->with('user')->latest()->take(10)->get(),
-            'aduanTerbaru' => $pendingComplaints
-                ->with('user', 'trashBin')
+            'aduanTerbaru' => (clone $pendingReports)
+                ->with('trashBin.unit')
                 ->latest()->take(5)->get(),
             'tongPenuh' => TrashBin::with('unit')
                 ->where('unit_id', $user->unit_id)
@@ -121,22 +120,11 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function unitComplaintQuery(int $unitId)
-    {
-        return Complaint::query()
-            ->where(function ($query) use ($unitId) {
-                $query->whereHas('trashBin', fn ($trashBin) => $trashBin->where('unit_id', $unitId))
-                    ->orWhere(function ($fallback) use ($unitId) {
-                        $fallback->whereNull('trash_bin_id')
-                            ->whereHas('user', fn ($reporter) => $reporter->where('unit_id', $unitId));
-                    });
-            });
-    }
-
     private function petugasDashboard(User $user): \Inertia\Response
     {
         return Inertia::render('Dashboard/Petugas', [
             'tongPenuh' => TrashBin::with('unit')
+                ->where('unit_id', $user->unit_id)
                 ->whereIn('status', ['penuh', 'setengah_penuh'])
                 ->orderByRaw("CASE WHEN status = 'penuh' THEN 0 ELSE 1 END")
                 ->take(10)
@@ -163,12 +151,10 @@ class DashboardController extends Controller
 
         return Inertia::render('Dashboard/Siswa', [
             'tongSekitar' => $tongSekitar,
-            'aduanSaya' => Complaint::where('user_id', $user->id)->latest()->take(5)->get(),
-            'totalAduanSaya' => Complaint::where('user_id', $user->id)
-                ->selectRaw('status, COUNT(*) as count')
-                ->groupBy('status')
-                ->pluck('count', 'status')
-                ->toArray(),
+            // Laporan publik (QR) tidak terkait akun; siswa hanya bisa melapor
+            // lewat QR tanpa login, jadi tidak ada "aduansaya".
+            'aduanSaya' => [],
+            'totalAduanSaya' => [],
             'edukasiList' => [],
         ]);
     }

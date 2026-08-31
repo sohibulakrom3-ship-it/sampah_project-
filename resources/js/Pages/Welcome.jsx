@@ -20,11 +20,11 @@ const heroStats = [
     { value: '82%', label: 'Sampah Berhasil Dipilah', icon: 'recycle', tone: 'green' },
 ];
 
-const trustedUnits = ['Kampus B', 'SD Muh.', 'SMP Muh.', 'SMA Muh.', 'TK Aisyiyah', 'BTM', 'Sanmar'];
+const trustedUnits = ['Kampus A', 'Kampus B', 'Kampus C', 'Kampus D', 'Kampus E', 'SMK Muh.', 'SD Muh.', 'SMP Muh.'];
 
 const bandStats = [
     { value: '36+', label: 'Tong Sampah Tersebar', icon: 'trash' },
-    { value: '6', label: 'Unit Kampus Terhubung', icon: 'building' },
+    { value: '14', label: 'Unit Kampus Terhubung', icon: 'building' },
     { value: '500+', label: 'Laporan Terselesaikan', icon: 'report' },
     { value: '98%', label: 'Keberhasilan Pengangkutan', icon: 'shield' },
 ];
@@ -57,7 +57,7 @@ const testimonials = [
     {
         quote: 'Sebagai petugas kebersihan, aplikasi ini memudahkan kami dalam menerima tugas dan mengetahui lokasi tong dengan tepat. Pengangkutan jadi lebih cepat.',
         name: 'Petugas Kebersihan',
-        role: 'Kampus B Muhammadiyah Cileungsi',
+        role: 'Kampus C Muhammadiyah Cileungsi',
         avatar: 'avatar-2.png',
     },
 ];
@@ -474,7 +474,7 @@ export default function Welcome({ canLogin, canRegister }) {
                                             <span key={c} className="h-8 w-8 rounded-full border-2 border-white" style={{ background: c }} />
                                         ))}
                                     </div>
-                                    <p className="text-xs leading-5 text-slate-500">Dipercaya oleh petugas kebersihan<br />dan admin di seluruh unit Kampus B</p>
+                                    <p className="text-xs leading-5 text-slate-500">Dipercaya oleh petugas kebersihan<br />dan admin di seluruh kampus (A&ndash;E)</p>
                                 </div>
                             </Reveal>
 
@@ -507,8 +507,8 @@ export default function Welcome({ canLogin, canRegister }) {
                     {/* Logo wall */}
                     <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                         <Reveal className="flex flex-col items-center gap-6 rounded-2xl border border-slate-200 bg-white p-6 lg:flex-row lg:gap-8">
-                            <p className="shrink-0 text-sm font-bold text-slate-500 lg:max-w-[120px]">Dipercaya oleh unit di Kampus B</p>
-                            <div className="grid w-full grid-cols-4 gap-4 sm:grid-cols-7">
+                            <p className="shrink-0 text-sm font-bold text-slate-500 lg:max-w-[120px]">Dipercaya oleh unit di seluruh kampus</p>
+                            <div className="grid w-full grid-cols-4 gap-4 sm:grid-cols-8">
                                 {trustedUnits.map((u) => (
                                     <div key={u} className="flex flex-col items-center gap-1.5">
                                         <span className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-extrabold text-slate-500 grayscale transition hover:text-slate-700">{u.charAt(0)}</span>

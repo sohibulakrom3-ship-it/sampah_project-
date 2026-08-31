@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Unit extends Model
 {
-    protected $fillable = ['nama', 'jenis', 'alamat', 'no_telepon', 'deskripsi'];
+    public const KAMPUS_OPTIONS = ['Kampus A', 'Kampus B', 'Kampus C', 'Kampus D', 'Kampus E'];
+
+    protected $fillable = ['nama', 'kampus', 'jenis', 'alamat', 'no_telepon', 'deskripsi'];
 
     public function users(): HasMany
     {

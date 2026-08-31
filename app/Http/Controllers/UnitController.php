@@ -21,6 +21,7 @@ class UnitController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
+            'kampus' => 'nullable|string|max:255',
             'jenis' => 'required|string|max:255',
             'alamat' => 'nullable|string',
         ]);
@@ -36,6 +37,7 @@ class UnitController extends Controller
     {
         $validated = $request->validate([
             'nama' => 'required|string|max:255',
+            'kampus' => 'nullable|string|max:255',
             'jenis' => 'required|string|max:255',
             'alamat' => 'nullable|string',
         ]);

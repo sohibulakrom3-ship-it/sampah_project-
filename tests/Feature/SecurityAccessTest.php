@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Complaint;
+use App\Models\PublicReport;
 use App\Models\Report;
 use App\Models\Role;
 use App\Models\TrashBin;
@@ -49,105 +49,52 @@ class SecurityAccessTest extends TestCase
             );
     }
 
-    public function test_siswa_cannot_view_another_users_complaint(): void
+    public function test_siswa_login_aduan_routes_are_removed(): void
     {
-        $siswaA = $this->makeUser('siswa');
-        $siswaB = $this->makeUser('siswa');
-        $complaint = Complaint::create([
-            'user_id' => $siswaA->id,
-            'judul' => 'Aduan privat',
-            'deskripsi' => 'Tidak boleh dibaca siswa lain.',
-            'status' => 'menunggu',
-        ]);
-
-        $this->actingAs($siswaB)
-            ->get(route('siswa.aduan.show', $complaint))
-            ->assertForbidden();
+        $this->assertFalse(Route::has('siswa.aduan.index'));
+        $this->assertFalse(Route::has('siswa.aduan.store'));
+        $this->assertFalse(Route::has('siswa.aduan.show'));
     }
 
     public function test_non_siswa_cannot_access_siswa_routes(): void
     {
         $unit = $this->makeUnit('SD Kampus Siswa');
         $adminUnit = $this->makeUser('admin_unit', $unit);
-        $trashBin = $this->makeTrashBin($unit);
 
         $this->actingAs($adminUnit)
             ->get(route('siswa.monitoring'))
             ->assertForbidden();
-
-        $this->actingAs($adminUnit)
-            ->post(route('siswa.aduan.store'), [
-                'trash_bin_id' => $trashBin->id,
-                'judul' => 'Aduan dari admin',
-                'deskripsi' => 'Admin tidak boleh memakai endpoint siswa.',
-            ])
-            ->assertForbidden();
     }
 
-    public function test_siswa_cannot_create_login_based_complaint_after_qr_flow_is_enabled(): void
+    public function test_siswa_cannot_manage_public_reports(): void
     {
-        $unit = $this->makeUnit('SD Kampus Aduan');
+        $unit = $this->makeUnit('SD Kampus Siswa Baru');
         $siswa = $this->makeUser('siswa', $unit);
         $trashBin = $this->makeTrashBin($unit);
 
-        $this->actingAs($siswa)
-            ->post(route('siswa.aduan.store'), [
-                'trash_bin_id' => $trashBin->id,
-                'judul' => 'Tong penuh',
-                'deskripsi' => 'Tong di depan kelas penuh.',
-            ])
-            ->assertForbidden();
-
-        $this->assertDatabaseMissing('complaints', [
-            'user_id' => $siswa->id,
+        $publicReport = PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
             'trash_bin_id' => $trashBin->id,
-            'judul' => 'Tong penuh',
+            'jenis_masalah' => 'penuh',
+            'deskripsi' => 'Laporan unit siswa ini.',
+            'status' => 'menunggu',
+            'ip_address' => '10.1.1.1',
         ]);
-    }
-
-    public function test_siswa_cannot_create_general_complaint_without_qr_trash_bin(): void
-    {
-        $unit = $this->makeUnit('SD Kampus Aduan Umum Siswa');
-        $siswa = $this->makeUser('siswa', $unit);
 
         $this->actingAs($siswa)
-            ->post(route('siswa.aduan.store'), [
-                'judul' => 'Aduan umum',
-                'deskripsi' => 'Aduan ini tidak terkait tong tertentu.',
+            ->get(route('admin.complaints.index'))
+            ->assertForbidden();
+
+        $this->actingAs($siswa)
+            ->put(route('admin.complaints.tanggapi', $publicReport), [
+                'status' => 'diproses',
+                'catatan_admin' => 'Tidak boleh.',
             ])
             ->assertForbidden();
 
-        $this->assertDatabaseMissing('complaints', [
-            'user_id' => $siswa->id,
-            'trash_bin_id' => null,
-            'judul' => 'Aduan umum',
-        ]);
-    }
-
-    public function test_siswa_with_unit_cannot_create_complaint_for_other_unit_trash_bin(): void
-    {
-        $ownedUnit = $this->makeUnit('SD Kampus Aduan A');
-        $otherUnit = $this->makeUnit('SMP Kampus Aduan B');
-        $siswa = $this->makeUser('siswa', $ownedUnit);
-        $ownedTrashBin = $this->makeTrashBin($ownedUnit);
-        $otherTrashBin = $this->makeTrashBin($otherUnit);
-
         $this->actingAs($siswa)
-            ->get(route('siswa.aduan.index'))
-            ->assertRedirect(route('dashboard'));
-
-        $this->actingAs($siswa)
-            ->post(route('siswa.aduan.store'), [
-                'trash_bin_id' => $otherTrashBin->id,
-                'judul' => 'Tong unit lain',
-                'deskripsi' => 'Tidak boleh membuat aduan lintas unit.',
-            ])
+            ->delete(route('admin.complaints.destroy', $publicReport))
             ->assertForbidden();
-
-        $this->assertDatabaseMissing('complaints', [
-            'user_id' => $siswa->id,
-            'trash_bin_id' => $otherTrashBin->id,
-        ]);
     }
 
     public function test_siswa_dashboard_is_scoped_and_monitoring_is_closed(): void
@@ -172,18 +119,18 @@ class SecurityAccessTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_authorized_users_can_view_complaint_and_trash_history_detail_pages(): void
+    public function test_authorized_users_can_view_public_reports_and_trash_history_detail_pages(): void
     {
         $unit = $this->makeUnit('SD Kampus Detail');
         $adminUnit = $this->makeUser('admin_unit', $unit);
-        $student = $this->makeUser('siswa', $unit);
         $trashBin = $this->makeTrashBin($unit);
-        $complaint = Complaint::create([
-            'user_id' => $student->id,
+        $publicReport = PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
             'trash_bin_id' => $trashBin->id,
-            'judul' => 'Aduan detail',
-            'deskripsi' => 'Halaman detail harus bisa dibuka.',
+            'jenis_masalah' => 'rusak',
+            'deskripsi' => 'Halaman daftar harus bisa dibuka.',
             'status' => 'menunggu',
+            'ip_address' => '10.1.1.2',
         ]);
         $history = TrashHistory::create([
             'trash_bin_id' => $trashBin->id,
@@ -194,9 +141,13 @@ class SecurityAccessTest extends TestCase
         ]);
 
         $this->actingAs($adminUnit)
-            ->get(route('admin.complaints.show', $complaint))
+            ->get(route('admin.complaints.index'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Complaints/Show'));
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/PublicReports/Index')
+                ->has('reports.data', 1)
+                ->where('reports.data.0.id', $publicReport->id)
+            );
 
         $this->actingAs($adminUnit)
             ->get(route('admin.trash-histories.show', $history))
@@ -204,97 +155,101 @@ class SecurityAccessTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('TrashHistories/Show'));
     }
 
-    public function test_admin_unit_cannot_respond_to_complaint_from_other_unit(): void
+    public function test_admin_unit_cannot_respond_to_report_from_other_unit(): void
     {
         $ownedUnit = $this->makeUnit('SD Kampus B');
         $otherUnit = $this->makeUnit('SMP Kampus B');
         $adminUnit = $this->makeUser('admin_unit', $ownedUnit);
-        $student = $this->makeUser('siswa', $otherUnit);
         $trashBin = $this->makeTrashBin($otherUnit);
-        $complaint = Complaint::create([
-            'user_id' => $student->id,
+        $publicReport = PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
             'trash_bin_id' => $trashBin->id,
-            'judul' => 'Aduan unit lain',
-            'deskripsi' => 'Tidak boleh ditangani admin unit lain.',
+            'jenis_masalah' => 'penuh',
+            'deskripsi' => 'Laporan unit lain.',
             'status' => 'menunggu',
+            'ip_address' => '10.1.1.3',
         ]);
 
         $this->actingAs($adminUnit)
-            ->put(route('admin.complaints.tanggapi', $complaint), [
+            ->put(route('admin.complaints.tanggapi', $publicReport), [
                 'status' => 'selesai',
-                'tanggapan' => 'Ditutup',
+                'catatan_admin' => 'Ditutup',
             ])
             ->assertForbidden();
     }
 
-    public function test_admin_unit_can_handle_general_complaint_from_own_unit_without_trash_bin(): void
+    public function test_admin_unit_can_handle_report_from_own_unit(): void
     {
         $ownedUnit = $this->makeUnit('SD Kampus Aduan Umum');
         $otherUnit = $this->makeUnit('SMP Kampus Aduan Umum');
         $adminUnit = $this->makeUser('admin_unit', $ownedUnit);
         $otherAdminUnit = $this->makeUser('admin_unit', $otherUnit);
-        $student = $this->makeUser('siswa', $ownedUnit);
+        $trashBin = $this->makeTrashBin($ownedUnit);
 
-        $complaint = Complaint::create([
-            'user_id' => $student->id,
-            'trash_bin_id' => null,
-            'judul' => 'Aduan umum unit sendiri',
-            'deskripsi' => 'Tidak terkait tong tertentu.',
+        $publicReport = PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
+            'trash_bin_id' => $trashBin->id,
+            'jenis_masalah' => 'lainnya',
+            'deskripsi' => 'Laporan unit sendiri.',
             'status' => 'menunggu',
+            'ip_address' => '10.1.1.4',
         ]);
 
         $this->actingAs($adminUnit)
             ->get(route('admin.complaints.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Complaints/Index')
-                ->has('complaints.data', 1)
-                ->where('complaints.data.0.id', $complaint->id)
-                ->where('complaints.data.0.trash_bin_id', null)
+                ->component('Admin/PublicReports/Index')
+                ->has('reports.data', 1)
+                ->where('reports.data.0.id', $publicReport->id)
+                ->where('reports.data.0.trash_bin_id', $trashBin->id)
             );
 
         $this->actingAs($adminUnit)
-            ->put(route('admin.complaints.tanggapi', $complaint), [
+            ->put(route('admin.complaints.tanggapi', $publicReport), [
                 'status' => 'diproses',
-                'tanggapan' => 'Aduan umum sedang ditindaklanjuti.',
+                'catatan_admin' => 'Laporan sedang ditindaklanjuti.',
             ])
             ->assertRedirect();
 
-        $this->assertDatabaseHas('complaints', [
-            'id' => $complaint->id,
+        $this->assertDatabaseHas('public_reports', [
+            'id' => $publicReport->id,
             'status' => 'diproses',
-            'ditanggapi_oleh' => $adminUnit->id,
+            'catatan_admin' => 'Laporan sedang ditindaklanjuti.',
+            'ditangani_oleh' => $adminUnit->id,
         ]);
 
         $this->actingAs($otherAdminUnit)
-            ->put(route('admin.complaints.tanggapi', $complaint), [
+            ->put(route('admin.complaints.tanggapi', $publicReport), [
                 'status' => 'selesai',
-                'tanggapan' => 'Tidak boleh dari unit lain.',
+                'catatan_admin' => 'Tidak boleh dari unit lain.',
             ])
             ->assertForbidden();
     }
 
-    public function test_admin_unit_dashboard_counts_general_complaints_from_own_unit(): void
+    public function test_admin_unit_dashboard_counts_public_reports_from_own_unit(): void
     {
         $ownedUnit = $this->makeUnit('SD Kampus Dashboard Aduan');
         $otherUnit = $this->makeUnit('SMP Kampus Dashboard Aduan');
         $adminUnit = $this->makeUser('admin_unit', $ownedUnit);
-        $student = $this->makeUser('siswa', $ownedUnit);
-        $otherStudent = $this->makeUser('siswa', $otherUnit);
+        $ownedTrashBin = $this->makeTrashBin($ownedUnit);
+        $otherTrashBin = $this->makeTrashBin($otherUnit);
 
-        Complaint::create([
-            'user_id' => $student->id,
-            'trash_bin_id' => null,
-            'judul' => 'Aduan umum dashboard',
+        PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
+            'trash_bin_id' => $ownedTrashBin->id,
+            'jenis_masalah' => 'penuh',
             'deskripsi' => 'Masuk hitungan dashboard unit.',
             'status' => 'menunggu',
+            'ip_address' => '10.1.1.5',
         ]);
-        Complaint::create([
-            'user_id' => $otherStudent->id,
-            'trash_bin_id' => null,
-            'judul' => 'Aduan umum unit lain',
+        PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
+            'trash_bin_id' => $otherTrashBin->id,
+            'jenis_masalah' => 'penuh',
             'deskripsi' => 'Tidak masuk hitungan dashboard unit ini.',
             'status' => 'menunggu',
+            'ip_address' => '10.1.1.6',
         ]);
 
         $this->actingAs($adminUnit)
@@ -304,32 +259,32 @@ class SecurityAccessTest extends TestCase
                 ->component('Dashboard/AdminUnit')
                 ->where('totalAduanPending', 1)
                 ->has('aduanTerbaru', 1)
-                ->where('aduanTerbaru.0.user_id', $student->id)
+                ->where('aduanTerbaru.0.trash_bin_id', $ownedTrashBin->id)
             );
     }
 
-    public function test_complaint_photo_is_deleted_when_complaint_is_deleted(): void
+    public function test_public_report_photo_is_deleted_when_report_is_deleted(): void
     {
         Storage::fake('public');
-        Storage::disk('public')->put('complaints/aduan.jpg', 'foto');
+        Storage::disk('public')->put('laporan/aduan.jpg', 'foto');
         $unit = $this->makeUnit('SD Kampus File Aduan');
         $adminUnit = $this->makeUser('admin_unit', $unit);
-        $student = $this->makeUser('siswa', $unit);
         $trashBin = $this->makeTrashBin($unit);
-        $complaint = Complaint::create([
-            'user_id' => $student->id,
+        $publicReport = PublicReport::create([
+            'nomor_tiket' => PublicReport::generateNomorTiket(),
             'trash_bin_id' => $trashBin->id,
-            'judul' => 'Aduan dengan foto',
-            'deskripsi' => 'File harus ikut hilang saat aduan dihapus.',
-            'foto' => 'complaints/aduan.jpg',
+            'jenis_masalah' => 'penuh',
+            'deskripsi' => 'Laporan dengan foto.',
+            'foto' => 'laporan/aduan.jpg',
             'status' => 'menunggu',
+            'ip_address' => '10.1.1.7',
         ]);
 
         $this->actingAs($adminUnit)
-            ->delete(route('admin.complaints.destroy', $complaint))
+            ->delete(route('admin.complaints.destroy', $publicReport))
             ->assertRedirect();
 
-        Storage::disk('public')->assertMissing('complaints/aduan.jpg');
+        Storage::disk('public')->assertMissing('laporan/aduan.jpg');
     }
 
     public function test_admin_unit_cannot_view_trash_history_from_other_unit(): void

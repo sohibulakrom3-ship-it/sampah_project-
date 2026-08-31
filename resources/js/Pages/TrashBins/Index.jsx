@@ -20,6 +20,8 @@ export default function Index({ trashBins, filters, units }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [editItem, setEditItem] = useState(null);
     const [locationMessage, setLocationMessage] = useState('');
+    const [statusModalOpen, setStatusModalOpen] = useState(false);
+    const [statusItem, setStatusItem] = useState(null);
     const [localFilters, setLocalFilters] = useState({
         search: filters?.search || '',
         unit_id: filters?.unit_id || '',
@@ -37,6 +39,13 @@ export default function Index({ trashBins, filters, units }) {
         longitude: '',
         keterangan: '',
     });
+
+    const statusForm = useForm({
+        status: 'kosong',
+    });
+
+    const currentRole = pageProps.auth?.user?.role;
+    const canEditStatus = ['super_admin', 'admin_unit'].includes(currentRole);
 
     const applyFilters = useCallback(
         (newFilters) => {
@@ -135,6 +144,22 @@ export default function Index({ trashBins, filters, units }) {
     const closeModal = () => {
         setModalOpen(false);
         setEditItem(null);
+    };
+
+    const openStatusChange = (bin) => {
+        statusForm.clearErrors();
+        setStatusItem(bin);
+        statusForm.setData('status', bin.status || 'kosong');
+        setStatusModalOpen(true);
+    };
+
+    const handleStatusChange = (e) => {
+        e.preventDefault();
+        statusForm.put(route('admin.trash-bins.status', statusItem.id), {
+            onSuccess: () => {
+                setStatusModalOpen(false);
+            },
+        });
     };
 
     const binList = trashBins?.data || [];
@@ -251,6 +276,9 @@ export default function Index({ trashBins, filters, units }) {
                                                 </td>
                                                 <td className="px-5 py-3 text-right space-x-2">
                                                     <a href={route('admin.trash-bins.barcode', bin.id)} className="text-xs font-medium text-[#4f46e5] hover:text-[#3730a3] transition">Cetak Barcode</a>
+                                                    {canEditStatus && (
+                                                        <button onClick={() => openStatusChange(bin)} className="text-xs font-medium text-[#7c3aed] hover:text-[#6d28d9] transition">Status</button>
+                                                    )}
                                                     <button onClick={() => openEdit(bin)} className="text-xs font-medium text-[#16a34a] hover:text-[#15803d] transition">Edit</button>
                                                     <button onClick={() => confirmDelete(bin.id)} className="text-xs font-medium text-[#dc2626] hover:text-[#b91c1c] transition">Hapus</button>
                                                 </td>
@@ -275,6 +303,9 @@ export default function Index({ trashBins, filters, units }) {
                                             </div>
                                             <div className="flex gap-2 shrink-0">
                                                 <a href={route('admin.trash-bins.barcode', bin.id)} className="text-xs font-medium text-[#4f46e5] hover:text-[#3730a3] transition">Barcode</a>
+                                                {canEditStatus && (
+                                                    <button onClick={() => openStatusChange(bin)} className="text-xs font-medium text-[#7c3aed] hover:text-[#6d28d9] transition">Status</button>
+                                                )}
                                                 <button onClick={() => openEdit(bin)} className="text-xs font-medium text-[#16a34a] hover:text-[#15803d] transition">Edit</button>
                                                 <button onClick={() => confirmDelete(bin.id)} className="text-xs font-medium text-[#dc2626] hover:text-[#b91c1c] transition">Hapus</button>
                                             </div>
@@ -486,6 +517,72 @@ export default function Index({ trashBins, filters, units }) {
                                             className="rounded-full bg-[#16a34a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#15803d] disabled:opacity-50"
                                         >
                                             {processing ? 'Menyimpan...' : editItem ? 'Simpan' : 'Tambah'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </Dialog.Panel>
+                        </Transition.Child>
+                    </div>
+                </Dialog>
+            </Transition>
+
+            {/* Status Modal */}
+            <Transition show={statusModalOpen}>
+                <Dialog onClose={() => setStatusModalOpen(false)} className="relative z-50">
+                    <Transition.Child
+                        enter="ease-out duration-200"
+                        enterFrom="opacity-0"
+                        enterTo="opacity-100"
+                        leave="ease-in duration-150"
+                        leaveFrom="opacity-100"
+                        leaveTo="opacity-0"
+                    >
+                        <div className="fixed inset-0 bg-black/30" />
+                    </Transition.Child>
+                    <div className="fixed inset-0 flex items-center justify-center p-4">
+                        <Transition.Child
+                            enter="ease-out duration-200"
+                            enterFrom="opacity-0 scale-95"
+                            enterTo="opacity-100 scale-100"
+                            leave="ease-in duration-150"
+                            leaveFrom="opacity-100 scale-100"
+                            leaveTo="opacity-0 scale-95"
+                        >
+                            <Dialog.Panel className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+                                <Dialog.Title className="text-base font-semibold text-[#111827] mb-1">
+                                    Ubah Status Tong
+                                </Dialog.Title>
+                                <p className="text-xs text-[#9ca3af] mb-5">
+                                    {statusItem?.kode} — {statusItem?.nama || ''}
+                                </p>
+                                <form onSubmit={handleStatusChange} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-[#374151] mb-1">Status</label>
+                                        <select
+                                            value={statusForm.data.status}
+                                            onChange={(e) => statusForm.setData('status', e.target.value)}
+                                            className="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm text-[#111827] focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]"
+                                        >
+                                            <option value="kosong">Kosong</option>
+                                            <option value="setengah_penuh">Setengah Penuh</option>
+                                            <option value="penuh">Penuh</option>
+                                            <option value="sudah_diangkut">Sudah Diangkut</option>
+                                        </select>
+                                    </div>
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-[#e5e7eb]">
+                                        <button
+                                            type="button"
+                                            onClick={() => setStatusModalOpen(false)}
+                                            className="rounded-full px-4 py-2 text-sm font-medium text-[#374151] transition hover:bg-[#f3f4f6]"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={statusForm.processing}
+                                            className="rounded-full bg-[#16a34a] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#15803d] disabled:opacity-50"
+                                        >
+                                            {statusForm.processing ? 'Menyimpan...' : 'Simpan Status'}
                                         </button>
                                     </div>
                                 </form>

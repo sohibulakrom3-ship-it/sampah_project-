@@ -36,8 +36,13 @@ _ide_helper.php
 .agents/
 .claude/
 .opencode/
+.zcode/
 skills-lock.json
 docker/ssh_*.py
+
+# Local backups / tooling
+*.bak
+node_modules_root_backup/
 
 # Temporary/output files
 nul

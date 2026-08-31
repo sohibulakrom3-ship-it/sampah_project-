@@ -22,7 +22,7 @@ export default function GuestLayout({ children }) {
                 </div>
 
                 <p className="mt-6 text-center text-xs text-muted-earth">
-                    &copy; {new Date().getFullYear()} SiPeSa &mdash; Kampus B
+                    &copy; {new Date().getFullYear()} SiPeSa &mdash; Muhammadiyah Cileungsi
                 </p>
             </div>
         </div>

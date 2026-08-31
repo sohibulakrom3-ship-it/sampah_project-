@@ -131,7 +131,7 @@ class TrashBinController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => 'required|in:kosong,setengah_penuh,penuh',
+            'status' => 'required|in:kosong,setengah_penuh,penuh,sudah_diangkut',
         ]);
 
         $trashBin->update(['status' => $validated['status']]);
@@ -184,6 +184,6 @@ class TrashBinController extends Controller
 
     private function mustStayInOwnUnit($user): bool
     {
-        return $user->isScopedToUnit() || $user->isSiswa();
+        return $user->isScopedToUnit() || $user->isSiswa() || $user->isPetugas();
     }
 }

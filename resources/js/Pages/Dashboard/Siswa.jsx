@@ -182,7 +182,7 @@ export default function Siswa({
                 {/* Aduan Saya */}
                 <div className="rounded-xl bg-white border border-cloud-ash p-5">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-semibold text-earth-heading">Aduan Saya</h3>
+                        <h3 className="text-sm font-semibold text-earth-heading">Laporan Publik</h3>
                         {hasAduan && (
                             <span className="text-xs font-medium text-muted-earth">Riwayat lama</span>
                         )}
@@ -219,8 +219,8 @@ export default function Siswa({
                                     <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5m6 4.125 2.25 2.25m0 0 2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
                                 </svg>
                             }
-                            title="Belum ada aduan"
-                            description="Kamu belum membuat aduan. Laporkan sampah di sekitarmu sekarang!"
+                            title="Belum ada laporan publik"
+                            description="Laporan warga sekarang dikirim lewat QR pada tong sampah — tanpa login."
                         />
                     )}
                 </div>

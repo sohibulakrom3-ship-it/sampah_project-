@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * SIPESA — Laporan warga kampus (ANONIM, tanpa login).
@@ -36,14 +37,22 @@ class PublicReport extends Model
         'ditangani_pada',
         'ip_address',
         'user_agent',
+        'foto',
         'is_duplikat',
         'duplikat_dari_id',
     ];
+
+    public function getFotoUrlAttribute(): ?string
+    {
+        return $this->foto ? Storage::url($this->foto) : null;
+    }
 
     protected $casts = [
         'ditangani_pada' => 'datetime',
         'is_duplikat' => 'boolean',
     ];
+
+    protected $appends = ['foto_url'];
 
     // =========================================================
     // RELATIONS

@@ -4,7 +4,7 @@ import StatusBadge from '@/Components/StatusBadge';
 import EmptyState from '@/Components/EmptyState';
 import TrackingMap from '@/Components/TrackingMap';
 import { usePage, useForm, router } from '@inertiajs/react';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import Swal from 'sweetalert2';
 
@@ -93,6 +93,7 @@ export default function Index({ histories, trashBins }) {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 accuracy,
+                heading: position.coords.heading ?? null,
             };
             setUserLocation(location);
             setLocationAccuracy(accuracy);
@@ -213,6 +214,20 @@ export default function Index({ histories, trashBins }) {
         setBinSearch('');
         setModalOpen(true);
     };
+
+    // Auto-buka form "Catat Pengangkutan" saat halaman dibuka lewat tombol "Angkut"
+    // (trash_bin_id ada di URL). Guard ref memastikan hanya berjalan sekali saat mount,
+    // sehingga tidak terbuka ulang saat user memfilter riwayat (router.get preserveState).
+    const autoOpenedPickup = useRef(false);
+    useEffect(() => {
+        if (autoOpenedPickup.current) return;
+        autoOpenedPickup.current = true;
+        const binId = new URLSearchParams(window.location.search).get('trash_bin_id');
+        if (!binId) return;
+        const bin = trashBins?.find((b) => b.id.toString() === binId.toString());
+        if (bin) openCreate(bin);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [trashBins]);
 
     const handleSubmit = (e) => {
         e.preventDefault();

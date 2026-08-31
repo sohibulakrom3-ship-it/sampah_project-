@@ -6,17 +6,28 @@ import { useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import Swal from 'sweetalert2';
 
-const jenisOptions = ['SD', 'SMP', 'SMA', 'TK', 'BTM', 'Sumart', 'Umci', 'Lainnya'];
+const jenisOptions = ['SD', 'SMP', 'SMA', 'SMK', 'TK', 'BTM', 'Sumart', 'Umci', 'Lainnya'];
 
 const jenisColorMap = {
     SD: 'bg-blue-100 text-blue-800',
     SMP: 'bg-indigo-100 text-indigo-800',
     SMA: 'bg-purple-100 text-purple-800',
+    SMK: 'bg-teal-100 text-teal-800',
     TK: 'bg-pink-100 text-pink-800',
     BTM: 'bg-amber-100 text-amber-800',
     Sumart: 'bg-emerald-100 text-emerald-800',
     Umci: 'bg-cyan-100 text-cyan-800',
     Lainnya: 'bg-gray-100 text-gray-800',
+};
+
+const kampusOptions = ['Kampus A', 'Kampus B', 'Kampus C', 'Kampus D', 'Kampus E'];
+
+const kampusColorMap = {
+    'Kampus A': 'bg-orange-100 text-orange-800',
+    'Kampus B': 'bg-green-100 text-green-800',
+    'Kampus C': 'bg-sky-100 text-sky-800',
+    'Kampus D': 'bg-violet-100 text-violet-800',
+    'Kampus E': 'bg-rose-100 text-rose-800',
 };
 
 export default function Index({ units }) {
@@ -27,6 +38,7 @@ export default function Index({ units }) {
 
     const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         nama: '',
+        kampus: '',
         jenis: 'SD',
         alamat: '',
         no_telepon: '',
@@ -45,6 +57,7 @@ export default function Index({ units }) {
         setEditItem(item);
         setData({
             nama: item.nama || '',
+            kampus: item.kampus || '',
             jenis: item.jenis || 'SD',
             alamat: item.alamat || '',
             no_telepon: item.no_telepon || '',
@@ -120,6 +133,7 @@ export default function Index({ units }) {
                                     <tr className="border-b border-[#e5e7eb] bg-[#f9fafb] text-xs font-medium text-[#6b7280]">
                                         <th className="px-5 py-3 w-12">No</th>
                                         <th className="px-5 py-3">Nama Unit</th>
+                                        <th className="px-5 py-3">Kampus</th>
                                         <th className="px-5 py-3">Jenis</th>
                                         <th className="px-5 py-3">Alamat</th>
                                         <th className="px-5 py-3">Total Pengguna</th>
@@ -132,6 +146,13 @@ export default function Index({ units }) {
                                         <tr key={unit.id} className="hover:bg-[#f9fafb] transition">
                                             <td className="px-5 py-3 text-[#9ca3af]">{index + 1 + ((units.meta?.current_page || 1) - 1) * (units.meta?.per_page || 10)}</td>
                                             <td className="px-5 py-3 font-medium text-[#111827]">{unit.nama}</td>
+                                            <td className="px-5 py-3">
+                                                {unit.kampus ? (
+                                                    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${kampusColorMap[unit.kampus] || 'bg-gray-100 text-gray-800'}`}>
+                                                        {unit.kampus}
+                                                    </span>
+                                                ) : '-'}
+                                            </td>
                                             <td className="px-5 py-3">
                                                 <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${jenisColorMap[unit.jenis] || 'bg-gray-100 text-gray-800'}`}>
                                                     {unit.jenis}
@@ -163,6 +184,11 @@ export default function Index({ units }) {
                                                 </span>
                                             </div>
                                             <h3 className="mt-1 text-sm font-semibold text-[#111827]">{unit.nama}</h3>
+                                            {unit.kampus && (
+                                                <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${kampusColorMap[unit.kampus] || 'bg-gray-100 text-gray-800'}`}>
+                                                    {unit.kampus}
+                                                </span>
+                                            )}
                                             {unit.alamat && <p className="mt-0.5 text-xs text-[#6b7280] truncate">{unit.alamat}</p>}
                                         </div>
                                         <div className="flex gap-2 shrink-0">
@@ -237,6 +263,21 @@ export default function Index({ units }) {
                                             className="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm text-[#111827] placeholder:text-[#9ca3af] focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]"
                                         />
                                         {errors.nama && <p className="mt-1 text-xs text-[#dc2626]">{errors.nama}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium text-[#374151] mb-1">Kampus</label>
+                                        <select
+                                            value={data.kampus}
+                                            onChange={(e) => setData('kampus', e.target.value)}
+                                            className="w-full rounded-md border border-[#d1d5db] px-3 py-2 text-sm text-[#111827] focus:border-[#6366f1] focus:ring-2 focus:ring-[#6366f1]"
+                                        >
+                                            <option value="">- Tanpa kampus -</option>
+                                            {kampusOptions.map((k) => (
+                                                <option key={k} value={k}>{k}</option>
+                                            ))}
+                                        </select>
+                                        {errors.kampus && <p className="mt-1 text-xs text-[#dc2626]">{errors.kampus}</p>}
                                     </div>
 
                                     <div>

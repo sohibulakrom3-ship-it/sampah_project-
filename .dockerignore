@@ -1,12 +1,16 @@
 .env
 .git
 node_modules
+node_modules_root_backup
+*.bak
+.zcode
 vendor
 storage/logs/*
 storage/framework/cache/*
 storage/framework/sessions/*
 storage/framework/views/*
 storage/framework/testing/*
+storage/app/public
 tests
 phpunit.xml
 docker-compose.yml

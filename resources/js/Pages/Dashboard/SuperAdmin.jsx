@@ -43,6 +43,15 @@ const tipeAktivitasLabel = {
     jadwal: 'Jadwal',
 };
 
+const jenisLaporanMap = {
+    penuh: 'Tong Penuh',
+    rusak: 'Tong Rusak',
+    bau: 'Bau Menyengat',
+    hama: 'Hama/Serangga',
+    pemilahan: 'Salah Pemilahan',
+    lainnya: 'Lainnya',
+};
+
 export default function SuperAdmin({
     totalUnit,
     totalTongSampah,
@@ -413,9 +422,11 @@ export default function SuperAdmin({
                                         </svg>
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-medium text-earth-heading truncate">{item.judul}</p>
+                                        <p className="text-sm font-medium text-earth-heading truncate">
+                                            {item.nomor_tiket} — {jenisLaporanMap[item.jenis_masalah] || item.jenis_masalah}
+                                        </p>
                                         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-earth">
-                                            {item.pelapor && <span>oleh {item.pelapor}</span>}
+                                            {item.nama_pelapor && <span>oleh {item.nama_pelapor}</span>}
                                             <span>{item.created_at || item.tanggal}</span>
                                         </div>
                                     </div>
